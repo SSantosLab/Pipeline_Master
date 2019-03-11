@@ -11,6 +11,7 @@ In addition to changing the season number, you will also want to make sure you f
 
 To run:
 > conda activate des18a
+
 > python TestAutomate.py
 
 Outputs will be saved in the cwd
