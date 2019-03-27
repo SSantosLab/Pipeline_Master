@@ -284,8 +284,12 @@ with open(DIR_SOURCE+'/Main-Injector/recycler.yaml') as f:
     var=yaml.load(f.read())
 f.close()
 
-band_array = var['exposure_filter_NS']
-band_list = (', '.join(band_array))
+#band_array = var['exposure_filter_NS']
+#band_list = (','.join(band_array))
+bands=subprocess.check_output(['awk', '{print $6}', 'checknewexposures.dat'])
+bandarray=bands.split('\n')
+band_list=','.join(bandlist[1:-1]) #0th index is the word "band" and the last index is just \n
+
 
 #Hack - make ligo id
 today = datetime.datetime.today().strftime('%y%m%d') #YYMMDD
