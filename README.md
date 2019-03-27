@@ -1,7 +1,7 @@
 # Pipeline_Master
 All scripts needed to run search and discovery pipeline automatically 
 
-## 03-27-2018 ##
+# 03-27-2018 #
 Currently everything assumes you are running as the desgw user. You may not be able to run otherwise - updates coming soon possibly.
 
 Before you run:
@@ -11,6 +11,7 @@ In addition to changing the season number, you will also want to make sure you f
 
 To run:
 > conda activate des18a
+
 > python TestAutomate_v2.py
 
 Optional arguments: 
@@ -24,8 +25,13 @@ Optional arguments:
 -C : for DAGMaker to run even if that exposure has already been run. 
 
 Outputs will be saved in the cwd
+
 Outputs:
+
 test_imgproc_dagmaker.err
+
 test_imgproc_dagmaker.out
+
 test_imgproc_jobsub.err
+
 test_imgproc_jobsub.out
