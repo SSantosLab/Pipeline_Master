@@ -1,7 +1,7 @@
 # Pipeline_Master
 All scripts needed to run search and discovery pipeline automatically 
 
-# 03-27-2018 #
+### 03-27-2018 ###
 Currently everything assumes you are running as the desgw user. You may not be able to run otherwise - updates coming soon possibly.
 
 Before you run:
