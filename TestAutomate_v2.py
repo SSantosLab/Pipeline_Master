@@ -11,6 +11,7 @@ from email.mime.text import MIMEText
 import datetime
 import updateStatus
 import ImgProc_run_checker
+import make_Mastermaster
 
 cwd = os.getcwd()
 parser = argparse.ArgumentParser()
@@ -78,10 +79,9 @@ def source(script, update=1):
     return env
 
 #[dagmaker, jobsub, starting imgproc]
-statusList=[False,False,False,'incomplete']
+statusList=['Waiting','Waiting','Waiting','incomplete']
 
-############# Image Processing ################ 
-
+#---------------------------------------------------------------
 ############ create new season number ###########
 ############ Y6 will start with 600   ###########
 import easyaccess
@@ -99,6 +99,8 @@ else:
 print("the season number for this event is "+str(newseason))
 print('')
 
+##---------------------------------------------------
+
 #Update season number in dagmaker.rc
 os.system("sed -i -e '/^SEASON/s/=.*$/="+str(newseason)+"/' "+DIR_SOURCE+"/gw_workflow/dagmaker.rc")
 
@@ -108,20 +110,25 @@ print("Done.")
 print('')
 
 #Make curatedExposure.list
-os.system("bash "+DIR_SOURCE+"/make_curatedlist.sh")
+
+if args.testExps == None:
+    os.system("bash "+DIR_SOURCE+"/make_curatedlist.sh")
 
 EXPLIST = os.popen('''awk '{print $1}' '''+explistfile).read().splitlines()
 EXPS = filter(None,set(EXPLIST)) #remove repeats and empty entries
 
-dagmakerout = open('imgproc_dagmaker_'+str(newseason)+'.out', 'w')
-dagmakererr = open('imgproc_dagmaker_'+str(newseason)+'.err', 'w')
-jobsubout = open("imgproc_jobsub_"+str(newseason)+".out", 'w')
-jobsuberr = open('imgproc_jobsub_'+str(newseason)+'.err', 'w')
+
+############# Image Processing ################
 
 for i in EXPS: #explist:
     EXPNUM = int(i)
     #check = os.path.isdir(DIR_SOURCE+'/gw_workflow/mytemp_'+str(EXPNUM))
     
+    dagmakerout = open('imgproc_dagmaker_'+str(newseason)+'_'+str(EXPNUM)+'.out', 'w')
+    dagmakererr = open('imgproc_dagmaker_'+str(newseason)+'_'+str(EXPNUM)+'.err', 'w')
+    jobsubout = open("imgproc_jobsub_"+str(newseason)+"_"+str(EXPNUM)+".out", 'w')
+    jobsuberr = open('imgproc_jobsub_'+str(newseason)+'_'+str(EXPNUM)+'.err', 'w')
+
     runpath = DIR_SOURCE+'/gw_workflow/dp'+str(newseason)+'/'+str(EXPNUM)
     check = os.path.isdir(runpath)
     
@@ -135,7 +142,11 @@ for i in EXPS: #explist:
         print("path "+str(runpath)+" exists, running dagmaker anyways")
     if check == False:
         print("mytemp_"+str(EXPNUM)+" does not exist, running DAGMaker.sh")
-
+        
+        statusList[0]='Running'
+        update=updateStatus.updateStatus(statusList,newseason,EXPNUM)
+        ImgProc_run_checker.checker(newseason,EXPNUM)
+        
         img1 = subprocess.Popen(['time','bash','-c', DIR_SOURCE+'/gw_workflow/DAGMaker.sh '+str(EXPNUM)] ,
                                 stdout = subprocess.PIPE, stderr=subprocess.PIPE, cwd='gw_workflow/') 
 
@@ -153,15 +164,16 @@ for i in EXPS: #explist:
             send_email(err_msg, where)
 
             statusList[0]=False
-            update=updateStatus.updateStatus(statusList,newseason)
+            update=updateStatus.updateStatus(statusList,newseason,EXPNUM)
             print("status updated")
 
         else:
             print('Finished ./DAGMaker for exposure '+str(EXPNUM)+'. Submitting jobs.')
             statusList[0]=True
-            update=updateStatus.updateStatus(statusList,newseason)
+            update=updateStatus.updateStatus(statusList,newseason,EXPNUM)
             print("status updated")
 
+        ImgProc_run_checker.checker(newseason,EXPNUM)
         print('')
         
         #copy the .dag file and the dagmaker.rc to the run path
@@ -169,8 +181,13 @@ for i in EXPS: #explist:
         os.system('cp '+DIR_SOURCE+'/gw_workflow/dagmaker.rc '+str(runpath))
 
         #submit dag
-#        img2 = subprocess.Popen(['jobsub_submit_dag','--role=DESGW', '-G', 'des','file://desgw_pipeline_'+str(EXPNUM)+'.dag'], 
-#                                stdout = subprocess.PIPE, stderr=subprocess.PIPE, cwd='gw_workflow/')        
+        statusList[1]='Running'
+        update=updateStatus.updateStatus(statusList,newseason,EXPNUM)
+        ImgProc_run_checker.checker(newseason,EXPNUM)
+
+        os.system('export X509_USER_PROXY=/opt/desgw/desgw.DESGW.proxy')
+        img2 = subprocess.Popen(['jobsub_submit_dag','--role=DESGW', '-G', 'des','file://desgw_pipeline_'+str(EXPNUM)+'.dag'], 
+                                stdout = subprocess.PIPE, stderr=subprocess.PIPE, cwd='gw_workflow/')        
 
         
         im2out, im2err = img2.communicate()
@@ -187,7 +204,7 @@ for i in EXPS: #explist:
             send_email(err_msg, where)
 
             statusList[1]=False
-            update=updateStatus.updateStatus(statusList,newseason)
+            update=updateStatus.updateStatus(statusList,newseason,EXPNUM)
             print("status updated")
 
         else:
@@ -195,21 +212,30 @@ for i in EXPS: #explist:
             print('Look at test_imgproc_jobsub.out for the jobid')
             
             statusList[1]=True
-            update=updateStatus.updateStatus(statusList,newseason)
+            update=updateStatus.updateStatus(statusList,newseason,EXPNUM)
             print("status updated")
+
+        ImgProc_run_checker.checker(newseason,EXPNUM)
     else:
         print('Already processed exposure number '+str(EXPNUM))
         statusList[0]=True #dagmaker
         statusList[1]=True #jobsub
-        update=updateStatus.updateStatus(statusList,newseason)
+        update=updateStatus.updateStatus(statusList,newseason,EXPNUM)
+        ImgProc_run_checker.checker(newseason,EXPNUM)
         print("status updated")
 
-dagmakerout.close()
-dagmakererr.close()
-jobsuberr.close()
-jobsubout.close()
+    dagmakerout.close()
+    dagmakererr.close()
+    jobsuberr.close()
+    jobsubout.close()
+    
+    #move all log files to the appropriate directories
+    os.system('mv imgproc_dagmaker_'+str(newseason)+'_'+str(EXPNUM)+'.out '+runpath)
+    os.system('mv imgproc_dagmaker_'+str(newseason)+'_'+str(EXPNUM)+'.err '+runpath)
+    os.system('mv imgproc_jobsub_'+str(newseason)+'_'+str(EXPNUM)+'.out '+runpath)
+    os.system('mv imgproc_jobsub_'+str(newseason)+'_'+str(EXPNUM)+'.err '+runpath)
 
-ImgProc_run_checker.checker(newseason)
+    ImgProc_run_checker.checker(newseason, EXPNUM)
 
 #save the dagmaker that was used
 os.system("cp "+DIR_SOURCE+"/gw_workflow/dagmaker.rc dagmaker"+str(newseason)+".rc")
@@ -218,12 +244,16 @@ print("Finished image processing! Moving on to post processing...")
 print('')
 print('')
 
+
+#------------------------------------------------------------------------------------
+
 #### check if Image processing jobs finised 
 #if at least 2 files of nonzero size exisit in /pnfs/des/persistent/gw/forcephoto/images/dpSEASON/DATE/EXP/ then move on to Post Processing
 
 print("Waiting 20min, then we will check if SEdiff finished.")
 import time
 import glob
+
 
 def send_email2(season):
 
@@ -243,15 +273,19 @@ def send_email2(season):
 
 send_email2(str(newseason))
 
-time.sleep(1200) #wait 20min before checking if file exisits 
+#time.sleep(1200) #wait 20min before checking if file exisits 
 print("Checking if SEdiff finsihed...")
 
 statusList[2]=True
-update=updateStatus.updateStatus(statusList,newseason)
-print("status updated")
+for i in EXPS: #explist       
+    EXPNUM = int(i)
+    print('check1',statusList)
+    update=updateStatus.updateStatus(statusList,newseason,EXPNUM)
+    print("status updated")
 
-ImgProc_run_checker.checker(newseason)
+    ImgProc_run_checker.checker(newseason, EXPNUM)
 
+"""
 #get and date of exposure 
 DATELIST = os.popen('''awk '{print $2}' '''+explistfile).read().splitlines()
 DATES = filter(None,set(DATELIST))
@@ -272,6 +306,7 @@ for EXP in EXPS:
             print("less than 2 fits files, waiting 1min")
             time.sleep(60)
             continue
+#------------------------------------------------------------------------------------
 
 ############# Run Post Processing #############
 
@@ -302,6 +337,8 @@ make_postproc_ini.makeini(season=newseason, ligoid=ligo_id, triggerid=var['trigg
 os.system("mv postproc.ini "+DIR_SOURCE+"/Post-Processing/postproc_"+str(newseason)+".ini")
 
 #run postproc
+source(DIR_SOURCE+'/Post-Processing/diffimg_setup.sh')
+
 start_pp = ['bash','-c', DIR_SOURCE+'/Post-Processing/seasonCycler.sh']
 postproc = subprocess.Popen(start_pp, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd='Post-Processing/')
 
@@ -328,7 +365,7 @@ if rc3 != 0:
     
 print("Finished Post-Processing! Visit website for more information")
 
-
+"""
 
 
 
