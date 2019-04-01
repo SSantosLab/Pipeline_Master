@@ -16,18 +16,20 @@ import argparse
 #args = parser.parse_args()
 #season=str(args.season)
 
-def checker(season):
+import make_Mastermaster
+
+def checker(season, expnum):
     thisTime = strftime("%Y%m%d.%H%M")
     thisTime=thisTime.replace('.','_')
-    seasonTime=open('seasonTime'+str(season)+'.txt','w+')
+    seasonTime=open('seasonTime'+str(season)+'_'+str(expnum)+'.txt','w+')
     seasonTime.write(str(season))
     seasonTime.write('\n')
     seasonTime.write(thisTime)
     seasonTime.close()
-    print('seasonTime'+str(season)+'.txt was made.')
+    print('seasonTime'+str(season)+'_'+str(expnum)+'.txt was made.')
 
 
-    seaTim=open('seasonTime'+str(season)+'.txt','r')
+    seaTim=open('seasonTime'+str(season)+'_'+str(expnum)+'.txt','r')
     seTi=seaTim.readlines()
     print(seTi)
     seaTim.close()
@@ -41,15 +43,21 @@ def checker(season):
     #statusPage.statusPage(statusList,season)
     
     statusList = []
-    txtfile = open('ImgProcStatus'+str(season)+'.txt', 'r')
+    txtfile = open('ImgProcStatus'+str(season)+'_'+str(expnum)+'.txt', 'r')
     lines = txtfile.read().split('\n')
     txtfile.close()
     for line in lines:
         statusList.append(line)
     
     print(statusList)
-    ImgProc_statusPage.statusPage(statusList,season)
-    os.system('mv ImgProc_statusPage'+str(season)+'.html html_files/')
-    os.system('scp html_files/ImgProc_statusPage'+str(season)+'*.html codemanager@desweb.fnal.gov:/des_web/www/html/desgw/post-processing-all/')
-    
+    ImgProc_statusPage.statusPage(statusList,season, expnum)
+    if not os.path.isdir('./html_files'):
+        os.makedirs('./html_files')
+
+    os.system('mv ImgProc_statusPage'+str(season)+'_'+str(expnum)+'.html html_files/')
+    os.system('scp html_files/ImgProc_statusPage'+str(season)+'_'+str(expnum)+'.html codemanager@desweb.fnal.gov:/des_web/www/html/desgw/post-processing-all/')
+    print("copied html to codemanager")
+
+    make_Mastermaster.mastermaster('ImgProc_statusPage'+str(season)+'_'+str(expnum)+'.html', 'Img Proc', season)
+
     return("Run chcecker done")
