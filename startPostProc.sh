@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd /data/des41.a/data/desgw/O3EngineeringRun
+cd /data/des41.a/data/desgw/O3FULL
 season=`cat oldseason.txt`
 timenow=```date +"%s"```
 
@@ -18,16 +18,16 @@ if [ -f exposures_$season.txt ]; then
 	    if [ $diff -lt 1800 ]; then #has the path been updated in 30min?
 #		echo path less than
 		numfiles=`ls $path | wc -l`  
-		if [ $numfiles -gt 2 ]; then 
+		if [ $numfiles -gt 5 ]; then 
 #		    echo more than two files 
-   		    echo $exp >> SEdiffdone_$season.list
+   		    echo $exp >> SEdiffdone_$season.list #exp list for postproc is just exps
 		    awk '$1=='$exp' {print $0}' exposures_$season.txt >> SEdiffdone_$season.txt
-		    cp SEdiffdoneexps_$season* Post-Processing/
-		fi
+		    cp SEdiffdone_$season* Post-Processing/
 		
-		awk '!a[$0]++' SEdiffdone_$season.list > SEdiffdoneexps_$season.list #remove repeates from list
-		awk '!a[$0]++' SEdiffdone_$season.txt > SEdiffdoneexps_$season.txt
-
+		    awk '!a[$0]++' SEdiffdone_$season.list > SEdiffdoneexps_$season.list #remove repeates from list
+		    awk '!a[$0]++' SEdiffdone_$season.txt > SEdiffdoneexps_$season.txt
+		
+		fi
 		time=```date +'%y%m%d-%H%M'```
 		count=```cat SEdiffdoneexps_$season.list | wc -l```
 		
@@ -54,6 +54,7 @@ if [ -f exposures_$season.txt ]; then
 
 		    cd Post-Processing
 		    source diffimg_setup.sh
+		    bash update_forcephoto_links.sh
 		    nohup python run_postproc.py --season $season --outputdir ./PostProc_$season\_$time/ &> postproc_$season\_$time.log &
 		    echo $! > PP_pid_$season\_$time.out
 

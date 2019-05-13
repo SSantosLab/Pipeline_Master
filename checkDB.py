@@ -8,7 +8,8 @@ import subprocess
 import easyaccess
 import fitsio
 
-with open('/data/des41.a/data/desgw/O3MarchER/Post-Processing/lastExp.txt', "r") as f:
+os.system('bash getlastexp.sh')
+with open('lastexp.txt', "r") as f:
     lastExp = f.read()
 f.close()
 
@@ -25,8 +26,9 @@ query = """SELECT id as EXPNUM,
        object as OBJECT
 FROM exposure.exposure
 WHERE flavor='object' and exptime>29.999 and RA is not NULL and id>"""+str(lastExp)+"""
-ORDER BY id DESC LIMIT 2"""
+ORDER BY id DESC 2"""
 #NULL and id>=182809 and expnum
+#DESC LIMIT 2
 
 conn =  psycopg2.connect(database='decam_prd',
                            user='decam_reader',
@@ -48,13 +50,19 @@ myout.close()
 
 #pull exposures with the correct propid, save file with exp num and nite
 #propid= "2018B-0942"
-propid1=2019A-0205 #(BNS)
-propid2=2019A-0235 #(BBH)
+propid1='2019A-0205' #(BNS)
+propid2='2019A-0235' #(BBH)
 
-os.system('''awk '$8=="%s" {print $0}' checknewexposures.dat > newexps.list''' %propid1)
-os.system('''awk '$8=="%s" {print $0}' checknewexposures.dat > newexps.list''' %propid2)
+os.system('''awk '$8=="2019A-0235" {print $0}' checknewexposures.dat > newexps.list''')
+os.system('''awk '$8=="2019A-0205" {print $0}' checknewexposures.dat > newexps.list''')
 
+os.system('cat newexps.list >> gw_workflow/exposures.list')
+os.system('awk '($6=="z") {print $0}' gw_workflow/exposures.list > gw_workflow/exposures_z.list')
+os.system('awk '($6=="r") {print $0}' gw_workflow/exposures.list > gw_workflow/exposures_r.list')
+os.system('awk '($6=="g") {print $0}' gw_workflow/exposures.list > gw_workflow/exposures_g.list')
+os.system('awk '($6=="i") {print $0}' gw_workflow/exposures.list > gw_workflow/exposures_i.list')
 
+"""
 ##get new season number
 season_query = 'SELECT max(SEASON) from marcelle.SNFAKEIMG where SEASON < 800;'
 connection=easyaccess.connect('destest')
@@ -64,7 +72,7 @@ newseason = (int(data[0][0]/100) + 1)*100
 current = open('newseason.txt', 'w')
 current.write(str(newseason))
 current.close()
-
+"""
 
 
 
